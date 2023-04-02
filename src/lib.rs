@@ -5,7 +5,7 @@ use std::{
 };
 
 // ThreadPool是一个类似于java的ThreadPoolExecutor的程序
-struct ThreadPool {
+pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: mpsc::SyncSender<Message>,
 }
