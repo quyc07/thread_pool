@@ -1,5 +1,5 @@
 [package]
-name = "thread_pool"
+name = "simple_thread_pool"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
