@@ -8,6 +8,8 @@ use std::{
 pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: mpsc::SyncSender<Message>,
+    max_size: usize,
+    rx: Arc<Mutex<mpsc::Receiver<Message>>>,
 }
 
 struct Worker {
@@ -42,23 +44,36 @@ impl Worker {
 }
 
 impl ThreadPool {
-    pub fn new(size: usize, buffer_size: usize) -> ThreadPool {
+    pub fn new(size: usize, max_size: usize, buffer_size: usize) -> ThreadPool {
         assert!(size > 0);
+        assert!(size <= max_size);
         let (sender, receiver) = mpsc::sync_channel(buffer_size);
         let receiver = Arc::new(Mutex::new(receiver));
         let mut workers = Vec::with_capacity(size);
         for id in 0..size {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
-        ThreadPool { workers, sender }
+        ThreadPool {
+            workers,
+            sender,
+            max_size,
+            rx: receiver,
+        }
     }
 
-    pub fn execute<F>(&self, f: F)
+    pub fn execute<F>(&mut self, f: F)
     where
         F: FnOnce() + Send + 'static,
     {
         let job = Box::new(f);
-        self.sender.send(Message::NewJob(job)).unwrap();
+        // self.sender.send(Message::NewJob(job)).unwrap();
+        let send_result = self.sender.try_send(Message::NewJob(job));
+        if let Err(err) = send_result {
+            println!("queue size is full, start create new worker");
+            if self.workers.len() < self.max_size {
+                self.workers.push(Worker::new(self.workers.len(), Arc::clone(&self.rx)))
+            }
+        }
     }
 }
 
@@ -77,26 +92,25 @@ mod tests {
     use super::*;
     #[test]
     fn it_works() {
-        let pool = ThreadPool::new(4, 10);
-        for i in 0..10 {
+        let pool = ThreadPool::new(4, 10, 10);
+        for _ in 0..10 {
             pool.execute(move || {
-                println!("hello {}", i);
                 sleep(Duration::from_secs(1));
             });
         }
-        sleep(Duration::from_secs(10));
+        drop(pool);
+        sleep(Duration::from_secs(5));
     }
 
     #[test]
     fn test_buffer_size() {
-        let pool = ThreadPool::new(4, 2);
-        for i in 0..10 {
+        let pool = ThreadPool::new(4, 10, 0);
+        for _ in 0..10 {
             pool.execute(move || {
-                println!("hello {}", i);
                 sleep(Duration::from_secs(1));
             });
         }
-        sleep(Duration::from_secs(10));
+        drop(pool);
+        sleep(Duration::from_secs(5));
     }
-
 }
