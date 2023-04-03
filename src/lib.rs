@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_buffer_size() {
-        let mut pool = ThreadPool::new(4, 10, 0);
+        let mut pool = ThreadPool::new(4, 6, 0);
         for _ in 0..10 {
             pool.execute(move || {
                 sleep(Duration::from_secs(1));
