@@ -92,7 +92,7 @@ mod tests {
     use super::*;
     #[test]
     fn it_works() {
-        let pool = ThreadPool::new(4, 10, 10);
+        let mut pool = ThreadPool::new(4, 10, 10);
         for _ in 0..10 {
             pool.execute(move || {
                 sleep(Duration::from_secs(1));
@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_buffer_size() {
-        let pool = ThreadPool::new(4, 10, 0);
+        let mut pool = ThreadPool::new(4, 10, 0);
         for _ in 0..10 {
             pool.execute(move || {
                 sleep(Duration::from_secs(1));
