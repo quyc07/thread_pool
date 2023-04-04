@@ -1,10 +1,9 @@
-mod tests;
-
 use std::{
-    sync::{mpsc, Arc, Mutex},
-    thread::{self, sleep},
-    time::Duration,
+    thread::self,
+    sync::{Arc, mpsc, Mutex},
 };
+
+mod tests;
 
 // ThreadPool是一个类似于java的ThreadPoolExecutor的程序
 pub struct ThreadPool {

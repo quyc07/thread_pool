@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod tests {
+    use std::thread::sleep;
+    use std::time::Duration;
     use crate::*;
 
     #[test]
-    fn it_works() {
+    fn test_thread_pool() {
         let mut pool = ThreadPool::new(4, 10);
         for _ in 0..10 {
             pool.execute(move || {
