@@ -5,10 +5,9 @@ use std::{
 
 mod tests;
 
-// ThreadPool是一个类似于java的ThreadPoolExecutor的程序
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    sender: mpsc::SyncSender<Message>,
+    sender: mpsc::SyncSender<Job>,
 }
 
 struct Worker {
@@ -16,24 +15,25 @@ struct Worker {
     thread: thread::JoinHandle<()>,
 }
 
-enum Message {
-    NewJob(Job),
-    Terminate,
-}
-
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
 impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
-        let thread = thread::spawn(move || loop {
-            let message = receiver.lock().unwrap().recv().unwrap();
-            match message {
-                Message::NewJob(job) => {
-                    job();
-                }
-                Message::Terminate => {
-                    break;
-                }
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+        let thread = thread::spawn(move || {
+            loop {
+                let lock = receiver.lock()
+                    .expect("Worker Unable to get the receiver lock.");
+                let message = lock.recv();
+                match message {
+                    Ok(job) => {
+                        println!("Worker {} got a job; executing.", id);
+                        job();
+                    }
+                    Err(_) => {
+                        println!("Worker {} received a broken channel.", id);
+                        break;
+                    }
+                };
             }
         });
         Worker { id, thread }
@@ -53,20 +53,10 @@ impl ThreadPool {
     }
 
     pub fn execute<F>(&mut self, f: F)
-    where
-        F: FnOnce() + Send + 'static,
+        where
+            F: FnOnce() + Send + 'static,
     {
         let job = Box::new(f);
-        self.sender.send(Message::NewJob(job)).unwrap();
-    }
-}
-
-impl Drop for ThreadPool {
-    fn drop(&mut self) {
-        println!("Sending terminate message to all workers.");
-        for _ in &self.workers {
-            self.sender.send(Message::Terminate).unwrap();
-        }
-        println!("Shutting down all workers.");
+        self.sender.send(job).unwrap();
     }
 }

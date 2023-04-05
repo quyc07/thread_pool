@@ -12,8 +12,8 @@ mod tests {
                 sleep(Duration::from_secs(1));
             });
         }
-        drop(pool);
         sleep(Duration::from_secs(3));
+        drop(pool);
     }
 
     #[test]
@@ -27,5 +27,23 @@ mod tests {
         }
         drop(pool);
         sleep(Duration::from_secs(3));
+    }
+
+    #[test]
+    fn test_thread_pool_size() {
+
+        let n_workers = 4;
+        let n_jobs = 8;
+        let mut pool = ThreadPool::new(n_workers, 100);
+
+        let (tx, rx) = mpsc::channel();
+        for _ in 0..n_jobs {
+            let tx = tx.clone();
+            pool.execute(move|| {
+                tx.send(1).expect("channel will be there waiting for the pool");
+            });
+        }
+
+        assert_eq!(rx.iter().take(n_jobs).fold(0, |a, b| a + b), 8);
     }
 }
